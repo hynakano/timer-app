@@ -1,0 +1,255 @@
+<!DOCTYPE html>  
+<html lang="ja">  
+<head>  
+<meta charset="UTF-8">  
+<meta name="viewport" content="width=device-width, initial-scale=1.0">  
+<title>**カウントダウンタイマー**</title>  
+<style>  
+  :root {  
+    --bg: #11141a;  
+    --fg: #f2f5f9;  
+    --accent: #4ade80;  
+    --accent-dim: #2b3340;  
+    --danger: #f87171;  
+  }  
+  
+  * { box-sizing: border-box; }  
+  
+  body {  
+    margin: 0;  
+    min-height: 100vh;  
+    display: flex;  
+    flex-direction: column;  
+    align-items: center;  
+    justify-content: center;  
+    gap: 32px;  
+    padding: 24px;  
+    background: var(--bg);  
+    color: var(--fg);  
+    font-family: "Helvetica Neue", Arial, "Hiragino Sans", "Noto Sans JP", sans-serif;  
+  }  
+  
+  h1 {  
+    margin: 0;  
+    font-size: 1.5rem;  
+    font-weight: 500;  
+    letter-spacing: 0.08em;  
+    color: #9aa6b8;  
+  }  
+  
+  #display {  
+    font-size: clamp(4.5rem, 22vw, 11rem);  
+    font-weight: 700;  
+    line-height: 1;  
+    font-variant-numeric: tabular-nums;  
+    letter-spacing: 0.02em;  
+  }  
+  
+  #display.finished {  
+    color: var(--danger);  
+    animation: blink 0.6s steps(1) infinite;  
+  }  
+  
+  @keyframes blink {  
+    50% { opacity: 0.25; }  
+  }  
+  
+  .controls {  
+    display: flex;  
+    flex-wrap: wrap;  
+    gap: 16px;  
+    justify-content: center;  
+    align-items: center;  
+  }  
+  
+  input**[**type="number"**]** {  
+    width: 200px;  
+    padding: 16px;  
+    font-size: 2rem;  
+    text-align: center;  
+    color: var(--fg);  
+    background: var(--accent-dim);  
+    border: 2px solid transparent;  
+    border-radius: 12px;  
+    font-variant-numeric: tabular-nums;  
+  }  
+  
+  input**[**type="number"**]**:focus {  
+    outline: none;  
+    border-color: var(--accent);  
+  }  
+  
+  button {  
+    padding: 16px 32px;  
+    font-size: 1.5rem;  
+    font-weight: 600;  
+    color: var(--bg);  
+    background: var(--accent);  
+    border: none;  
+    border-radius: 12px;  
+    cursor: pointer;  
+  }  
+  
+  button.secondary {  
+    color: var(--fg);  
+    background: var(--accent-dim);  
+  }  
+  
+  button:hover { opacity: 0.85; }  
+  
+  button:disabled {  
+    opacity: 0.4;  
+    cursor: not-allowed;  
+  }  
+  
+  label {  
+    font-size: 1.1rem;  
+    color: #9aa6b8;  
+  }  
+</style>  
+</head>  
+<body>  
+  <h1>**カウントダウンタイマー**</h1>  
+  
+  <div id="display">00:00</div>  
+  
+  <div class="controls">  
+    <label for="seconds">**秒数**</label>  
+    <input type="number" id="seconds" min="1" max="86399" step="1" value="60" inputmode="numeric">  
+  </div>  
+  
+  <div class="controls">  
+    <button id="start">**スタート**</button>  
+    <button id="reset" class="secondary">**リセット**</button>  
+  </div>  
+  
+<script>  
+  const display = document.getElementById('display');  
+  const secondsInput = document.getElementById('seconds');  
+  const startBtn = document.getElementById('start');  
+  const resetBtn = document.getElementById('reset');  
+  
+  const MAX_SECONDS = 86399; // 23:59:59  
+  
+  let endTime = 0;        // **カウントダウン終了時刻** (ms)  
+  let remaining = 0;      // **残り秒数（切り上げ）**  
+  let running = false;  
+  let tickId = null;  
+  let audioCtx = null;  
+  
+  function format(totalSeconds) {  
+    const s = Math.max(0, totalSeconds);  
+    const h = Math.floor(s / 3600);  
+    const m = Math.floor((s % 3600) / 60);  
+    const sec = s % 60;  
+    const mm = String(m).padStart(2, '0');  
+    const ss = String(sec).padStart(2, '0');  
+    return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;  
+  }  
+  
+  function render() {  
+    display.textContent = format(remaining);  
+  }  
+  
+  // **終了音**: **外部ファイル不要の** Web Audio API **によるビープ音を**3**回鳴らす**  
+  function playBeep() {  
+    if (!audioCtx) return;  
+    const start = audioCtx.currentTime;  
+    for (let i = 0; i < 3; i++) {  
+      const at = start + i * 0.35;  
+      const osc = audioCtx.createOscillator();  
+      const gain = audioCtx.createGain();  
+      osc.type = 'sine';  
+      osc.frequency.value = 880;  
+      gain.gain.setValueAtTime(0.0001, at);  
+      gain.gain.exponentialRampToValueAtTime(0.3, at + 0.02);  
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.25);  
+      osc.connect(gain).connect(audioCtx.destination);  
+      osc.start(at);  
+      osc.stop(at + 0.3);  
+    }  
+  }  
+  
+  function stopTicking() {  
+    if (tickId !== null) {  
+      clearInterval(tickId);  
+      tickId = null;  
+    }  
+    running = false;  
+  }  
+  
+  function finish() {  
+    stopTicking();  
+    remaining = 0;  
+    render();  
+    display.classList.add('finished');  
+    startBtn.textContent = '**スタート**';  
+    startBtn.disabled = false;  
+    secondsInput.disabled = false;  
+    playBeep();  
+  }  
+  
+  function tick() {  
+    remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));  
+    render();  
+    if (remaining <= 0) finish();  
+  }  
+  
+  function start() {  
+    const value = Math.floor(Number(secondsInput.value));  
+    if (!Number.isFinite(value) || value <= 0) {  
+      secondsInput.focus();  
+      return;  
+    }  
+    const total = Math.min(value, MAX_SECONDS);  
+    secondsInput.value = total;  
+  
+    // **音声はユーザー操作の中で** AudioContext **を用意しておく（自動再生制限の回避）**  
+    if (!audioCtx) {  
+      const Ctx = window.AudioContext || window.webkitAudioContext;  
+      if (Ctx) audioCtx = new Ctx();  
+    }  
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();  
+  
+    display.classList.remove('finished');  
+    remaining = total;  
+    endTime = Date.now() + total * 1000;  
+    running = true;  
+    render();  
+  
+    startBtn.textContent = '**カウント中**…';  
+    startBtn.disabled = true;  
+    secondsInput.disabled = true;  
+  
+    tickId = setInterval(tick, 200); // **実時間基準で描画するためのポーリング**  
+  }  
+  
+  function reset() {  
+    stopTicking();  
+    display.classList.remove('finished');  
+    startBtn.textContent = '**スタート**';  
+    startBtn.disabled = false;  
+    secondsInput.disabled = false;  
+    remaining = Math.max(0, Math.floor(Number(secondsInput.value)) || 0);  
+    render();  
+  }  
+  
+  startBtn.addEventListener('click', start);  
+  resetBtn.addEventListener('click', reset);  
+  
+  secondsInput.addEventListener('input', () => {  
+    if (!running) {  
+      display.classList.remove('finished');  
+      remaining = Math.max(0, Math.floor(Number(secondsInput.value)) || 0);  
+      render();  
+    }  
+  });  
+  
+  document.addEventListener('keydown', (e) => {  
+    if (e.key === 'Enter' && !startBtn.disabled) start();  
+  });  
+  
+  reset();  
+</script>  
+</body>  
+</html>  

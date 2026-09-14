@@ -3,7 +3,7 @@
 <head>  
 <meta charset="UTF-8">  
 <meta name="viewport" content="width=device-width, initial-scale=1.0">  
-<title>**カウントダウンタイマー**</title>  
+<title>カウントダウンタイマー</title>  
 <style>  
   :root {  
     --bg: #11141a;  
@@ -62,19 +62,19 @@
     align-items: center;  
   }  
   
-  input**[**type="number"**]** {  
-    width: 200px;  
-    padding: 16px;  
-    font-size: 2rem;  
-    text-align: center;  
-    color: var(--fg);  
-    background: var(--accent-dim);  
-    border: 2px solid transparent;  
-    border-radius: 12px;  
-    font-variant-numeric: tabular-nums;  
-  }  
+  input[type="number"] {
+    width: 280px;
+    padding: 24px;
+    font-size: 3rem;
+    text-align: center;
+    color: var(--fg);
+    background: var(--accent-dim);
+    border: 2px solid transparent;
+    border-radius: 16px;
+    font-variant-numeric: tabular-nums;
+  }
   
-  input**[**type="number"**]**:focus {  
+  input[type="number"]:focus {  
     outline: none;  
     border-color: var(--accent);  
   }  
@@ -102,25 +102,25 @@
     cursor: not-allowed;  
   }  
   
-  label {  
-    font-size: 1.1rem;  
-    color: #9aa6b8;  
-  }  
+  label {
+    font-size: 1.4rem;
+    color: #9aa6b8;
+  }
 </style>  
 </head>  
 <body>  
-  <h1>**カウントダウンタイマー**</h1>  
+  <h1>カウントダウンタイマー</h1>  
   
   <div id="display">00:00</div>  
   
   <div class="controls">  
-    <label for="seconds">**秒数**</label>  
+    <label for="seconds">秒数</label>  
     <input type="number" id="seconds" min="1" max="86399" step="1" value="60" inputmode="numeric">  
   </div>  
   
   <div class="controls">  
-    <button id="start">**スタート**</button>  
-    <button id="reset" class="secondary">**リセット**</button>  
+    <button id="start">スタート</button>  
+    <button id="reset" class="secondary">リセット</button>  
   </div>  
   
 <script>  
@@ -131,8 +131,8 @@
   
   const MAX_SECONDS = 86399; // 23:59:59  
   
-  let endTime = 0;        // **カウントダウン終了時刻** (ms)  
-  let remaining = 0;      // **残り秒数（切り上げ）**  
+  let endTime = 0;        // カウントダウン終了時刻 (ms)  
+  let remaining = 0;      // 残り秒数（切り上げ）  
   let running = false;  
   let tickId = null;  
   let audioCtx = null;  
@@ -151,7 +151,7 @@
     display.textContent = format(remaining);  
   }  
   
-  // **終了音**: **外部ファイル不要の** Web Audio API **によるビープ音を**3**回鳴らす**  
+  // 終了音: 外部ファイル不要の Web Audio API によるビープ音を3回鳴らす  
   function playBeep() {  
     if (!audioCtx) return;  
     const start = audioCtx.currentTime;  
@@ -183,7 +183,7 @@
     remaining = 0;  
     render();  
     display.classList.add('finished');  
-    startBtn.textContent = '**スタート**';  
+    startBtn.textContent = 'スタート';  
     startBtn.disabled = false;  
     secondsInput.disabled = false;  
     playBeep();  
@@ -204,7 +204,7 @@
     const total = Math.min(value, MAX_SECONDS);  
     secondsInput.value = total;  
   
-    // **音声はユーザー操作の中で** AudioContext **を用意しておく（自動再生制限の回避）**  
+    // 音声はユーザー操作の中で AudioContext を用意しておく（自動再生制限の回避）  
     if (!audioCtx) {  
       const Ctx = window.AudioContext || window.webkitAudioContext;  
       if (Ctx) audioCtx = new Ctx();  
@@ -217,17 +217,17 @@
     running = true;  
     render();  
   
-    startBtn.textContent = '**カウント中**…';  
+    startBtn.textContent = 'カウント中…';  
     startBtn.disabled = true;  
     secondsInput.disabled = true;  
   
-    tickId = setInterval(tick, 200); // **実時間基準で描画するためのポーリング**  
+    tickId = setInterval(tick, 200); // 実時間基準で描画するためのポーリング  
   }  
   
   function reset() {  
     stopTicking();  
     display.classList.remove('finished');  
-    startBtn.textContent = '**スタート**';  
+    startBtn.textContent = 'スタート';  
     startBtn.disabled = false;  
     secondsInput.disabled = false;  
     remaining = Math.max(0, Math.floor(Number(secondsInput.value)) || 0);  
